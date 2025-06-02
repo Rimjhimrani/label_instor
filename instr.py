@@ -73,11 +73,11 @@ def process_uploaded_logo(uploaded_logo, target_width_cm, target_height_cm):
 
         # Get original dimensions
         orig_width, orig_height = logo_img.size
-        
+
         # Calculate aspect ratio and resize to fit within bounds while maintaining aspect ratio
         aspect_ratio = orig_width / orig_height
         target_aspect = box_width_px / box_height_px
-        
+
         if aspect_ratio > target_aspect:
             # Image is wider, fit to width
             new_width = box_width_px
@@ -86,7 +86,7 @@ def process_uploaded_logo(uploaded_logo, target_width_cm, target_height_cm):
             # Image is taller, fit to height
             new_height = box_height_px
             new_width = int(box_height_px * aspect_ratio)
-        
+
         # Resize with high quality
         logo_img = logo_img.resize((new_width, new_height), PILImage.Resampling.LANCZOS)
 
@@ -102,7 +102,7 @@ def process_uploaded_logo(uploaded_logo, target_width_cm, target_height_cm):
         print(f"LOGO DEBUG: Target: {target_width_cm:.2f}cm x {target_height_cm:.2f}cm")
         print(f"LOGO DEBUG: Final: {final_width_cm:.2f}cm x {final_height_cm:.2f}cm")
         print(f"LOGO DEBUG: Pixels: {new_width}px x {new_height}px")
-        
+
         # Create ReportLab Image with actual dimensions
         return Image(img_buffer, width=final_width_cm*cm, height=final_height_cm*cm)
 
@@ -331,7 +331,7 @@ def generate_sticker_labels(df, line_loc_header_width, line_loc_box1_width,
 
             # Row heights
             ASSLY_row_height = 0.85*cm
-            part_row_height = 0.8*cm   
+            part_row_height = 0.8*cm
             desc_row_height = 0.5*cm
             bottom_row_height = 0.6*cm
             location_row_height = 0.5*cm
@@ -567,13 +567,13 @@ def main():
     # Sidebar for configuration
     with st.sidebar:
         st.header("📐 Configuration")
-        
+
         st.subheader("Line Location Column Widths")
         st.caption("Adjust the width distribution for line location boxes (total should = 1.0)")
-        
+
         line_loc_header_width = st.slider("Header Width", 0.1, 0.5, 0.25, 0.05, key="header_width")
         remaining_width = 1.0 - line_loc_header_width
-        
+
         col1, col2 = st.columns(2)
         with col1:
             line_loc_box1_width = st.slider("Box 1", 0.05, remaining_width, 0.1875, 0.05, key="box1_width")
@@ -581,9 +581,9 @@ def main():
         with col2:
             line_loc_box2_width = st.slider("Box 2", 0.05, remaining_width, 0.1875, 0.05, key="box2_width")
             line_loc_box4_width = st.slider("Box 4", 0.05, remaining_width, 0.1875, 0.05, key="box4_width")
-        
+
         total_width = line_loc_header_width + line_loc_box1_width + line_loc_box2_width + line_loc_box3_width + line_loc_box4_width
-        
+
         if abs(total_width - 1.0) > 0.01:
             st.warning(f"⚠️ Total width: {total_width:.3f} (should be 1.000)")
         else:
@@ -595,7 +595,7 @@ def main():
             type=['png', 'jpg', 'jpeg'],
             help="Logo will be resized to fit the first box dimensions automatically"
         )
-        
+
         if uploaded_logo:
             st.success("✅ Logo uploaded successfully!")
             # Preview the uploaded logo
@@ -605,7 +605,7 @@ def main():
 
     # Main content area
     col1, col2 = st.columns([2, 1])
-    
+
     with col1:
         st.subheader("📄 File Upload")
         uploaded_file = st.file_uploader(
@@ -623,18 +623,18 @@ def main():
                     df = pd.read_csv(uploaded_file)
                 else:
                     df = pd.read_excel(uploaded_file)
-                
+
                 st.success(f"✅ File loaded: {len(df)} rows, {len(df.columns)} columns")
-                
+
                 # Show column names
                 st.write("**Available Columns:**")
                 for i, col in enumerate(df.columns, 1):
                     st.write(f"{i}. {col}")
-                
+
                 # Show preview
                 st.write("**Data Preview:**")
                 st.dataframe(df.head(3), use_container_width=True)
-                
+
             except Exception as e:
                 st.error(f"Error reading file: {e}")
                 df = None
@@ -645,14 +645,14 @@ def main():
     # Generate button
     if df is not None:
         st.subheader("🚀 Generate Stickers")
-        
+
         col1, col2, col3 = st.columns([1, 1, 2])
-        
+
         with col1:
             if st.button("🏷️ Generate Sticker Labels", type="primary", use_container_width=True):
                 with st.spinner("Generating sticker labels..."):
                     pdf_path, count = generate_sticker_labels(
-                        df, 
+                        df,
                         line_loc_header_width,
                         line_loc_box1_width,
                         line_loc_box2_width,
@@ -660,19 +660,19 @@ def main():
                         line_loc_box4_width,
                         uploaded_logo
                     )
-                    
+
                     if pdf_path and count > 0:
                         # Read the PDF file
                         with open(pdf_path, 'rb') as pdf_file:
                             pdf_bytes = pdf_file.read()
-                        
+
                         # Clean up temporary file
                         os.unlink(pdf_path)
-                        
+
                         # Create download button
                         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
                         filename = f"sticker_labels_{timestamp}.pdf"
-                        
+
                         st.download_button(
                             label="📥 Download PDF",
                             data=pdf_bytes,
@@ -680,12 +680,12 @@ def main():
                             mime="application/pdf",
                             use_container_width=True
                         )
-                        
+
                         st.balloons()
-        
+
         with col2:
             st.metric("Total Rows", len(df))
-        
+
         with col3:
             st.info("💡 **Tip:** Adjust column widths in the sidebar to customize your layout")
 
