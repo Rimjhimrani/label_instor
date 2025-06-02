@@ -1,0 +1,8 @@
+streamlit
+pandas
+numpy
+openpyxl
+xlrd
+reportlab
+Pillow
+qrcode[Pil]
