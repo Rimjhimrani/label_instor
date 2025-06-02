@@ -132,7 +132,8 @@ def generate_qr_code(data_string):
         qr_img.save(img_buffer, format='PNG')
         img_buffer.seek(0)
 
-        return Image(img_buffer, width=1.8*cm, height=1.8*cm)
+        # Increased QR code size to span multiple rows properly
+        return Image(img_buffer, width=2.2*cm, height=2.2*cm)
     except Exception as e:
         st.error(f"Error generating QR code: {e}")
         return None
@@ -213,7 +214,7 @@ def generate_sticker_labels(df, line_loc_header_width, line_loc_box1_width,
             )
             canvas.restoreState()
 
-        doc = SimpleDocTemplate(output_pdf_path, pagesize=STICKER_PAGESIZE,
+        doc = SimpleDocDocument(output_pdf_path, pagesize=STICKER_PAGESIZE,
                               topMargin=0.2*cm,
                               bottomMargin=(STICKER_HEIGHT - CONTENT_BOX_HEIGHT - 0.2*cm),
                               leftMargin=(STICKER_WIDTH - CONTENT_BOX_WIDTH) / 2,
@@ -337,43 +338,28 @@ def generate_sticker_labels(df, line_loc_header_width, line_loc_box1_width,
             # Create ASSLY row content
             first_box_content = first_box_logo if first_box_logo else ""
 
-            # Create table data with 4-box QTY/VEH row (Header, QTY value, Container type, QR code)
+            # Create a single unified table with proper QR code spanning
+            # Modified to have QR code span from QTY/VEH row to DATE row (3 rows)
             unified_table_data = [
-                [first_box_content, "ASSLY", Paragraph(ASSLY, ASSLY_style)],
-                ["PART NO", Paragraph(f"<b>{part_no}</b>", Part_style), Paragraph(f"<b>{part_status}</b>", Part_status_style)],  # 3 columns: Header, Part Number, Part Status
-                ["PART DESC", Paragraph(desc, desc_style)],
-                ["QTY/VEH", Paragraph(str(Part_per_veh), partper_style), Paragraph(str(container_type), container_style), qr_cell],  # 4 columns: Header, QTY, Container, QR
-                ["TYPE", Paragraph(str(Type), Type_style), ""],
-                ["DATE", Paragraph(today_date, date_style), ""],
+                [first_box_content, "ASSLY", Paragraph(ASSLY, ASSLY_style), ""],
+                ["PART NO", Paragraph(f"<b>{part_no}</b>", Part_style), Paragraph(f"<b>{part_status}</b>", Part_status_style), ""],
+                ["PART DESC", Paragraph(desc, desc_style), "", ""],
+                ["QTY/VEH", Paragraph(str(Part_per_veh), partper_style), Paragraph(str(container_type), container_style), qr_cell],
+                ["TYPE", Paragraph(str(Type), Type_style), "", ""],
+                ["DATE", Paragraph(today_date, date_style), "", ""],
                 ["LINE LOCATION", location_box_1, location_box_2, location_box_3, location_box_4]
             ]
 
-            # Column widths
-            col_widths_assly = [
-                content_width * 0.25,    # Logo box: 25%
-                content_width * 0.15,    # Header: 15%
-                content_width * 0.60     # Value: 60%
+            # Column widths - 4 columns for consistency
+            col_widths = [
+                content_width * 0.25,    # Header column: 25%
+                content_width * 0.35,    # Main content: 35%
+                content_width * 0.15,    # Secondary content: 15%
+                content_width * 0.25     # QR/Status column: 25%
             ]
 
-            # Column widths for 3-column PART NO row
-            col_widths_partno = [
-                content_width * 0.25,    # Header: 25%
-                content_width * 0.50,    # Part number: 50%
-                content_width * 0.25     # Part status: 25%
-            ]
-
-            col_widths_standard = [content_width * 0.25, content_width * 0.75]
-            
-            # Modified column widths for QTY/VEH row with 4 columns
-            col_widths_qty = [
-                content_width * 0.25,    # Header: 25%
-                content_width * 0.175,   # QTY value: 17.5% (half of original 35%)
-                content_width * 0.175,   # Container type: 17.5% (half of original 35%)
-                content_width * 0.40     # QR code: 40%
-            ]
-            
-            col_widths_middle = [content_width * 0.25, content_width * 0.35, content_width * 0.40]
-            col_widths_bottom = [
+            # Special column widths for line location row (5 columns)
+            col_widths_location = [
                 content_width * line_loc_header_width,
                 content_width * line_loc_box1_width,
                 content_width * line_loc_box2_width,
@@ -383,117 +369,47 @@ def generate_sticker_labels(df, line_loc_header_width, line_loc_box1_width,
 
             row_heights = [ASSLY_row_height, part_row_height, desc_row_height, bottom_row_height, bottom_row_height, bottom_row_height, location_row_height]
 
-            # Create separate tables with 4-column QTY/VEH table structure
-            assly_table = Table([unified_table_data[0]], colWidths=col_widths_assly, rowHeights=[row_heights[0]])
-            partno_table = Table([unified_table_data[1]], colWidths=col_widths_partno, rowHeights=[row_heights[1]])  # 3-column table
-            desc_table = Table([unified_table_data[2]], colWidths=col_widths_standard, rowHeights=[row_heights[2]])
-            qty_table = Table([unified_table_data[3]], colWidths=col_widths_qty, rowHeights=[row_heights[3]])  # 4-column QTY table
-            type_table = Table([unified_table_data[4]], colWidths=col_widths_middle, rowHeights=[row_heights[4]])
-            date_table = Table([unified_table_data[5]], colWidths=col_widths_middle, rowHeights=[row_heights[5]])
-            bottom_table = Table([unified_table_data[6]], colWidths=col_widths_bottom, rowHeights=[row_heights[6]])
+            # Create main table (first 6 rows with 4 columns)
+            main_table = Table(unified_table_data[:6], colWidths=col_widths, rowHeights=row_heights[:6])
+            
+            # Create location table (last row with 5 columns)
+            location_table = Table([unified_table_data[6]], colWidths=col_widths_location, rowHeights=[row_heights[6]])
 
-            # Apply table styles
-            assly_style = [
+            # Apply styles to main table
+            main_table_style = [
                 ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-                ('FONTNAME', (1, 0), (1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, -1), 8),
-                ('ALIGN', (0, 0), (0, 0), 'CENTER'),
-                ('ALIGN', (1, 0), (1, 0), 'CENTER'),
-                ('ALIGN', (2, 0), (2, 0), 'LEFT'),
+                ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),  # Headers bold
+                ('FONTSIZE', (0, 0), (0, -1), 8),                # Header font size
+                ('ALIGN', (0, 0), (0, -1), 'CENTER'),            # Headers centered
+                ('ALIGN', (1, 0), (1, -1), 'LEFT'),              # Main content left
+                ('ALIGN', (2, 0), (2, -1), 'CENTER'),            # Secondary content centered
+                ('ALIGN', (3, 0), (3, -1), 'CENTER'),            # QR/Status centered
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('LEFTPADDING', (0, 0), (-1, -1), 2),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 2),
-                ('TOPPADDING', (0, 0), (-1, -1), 2),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
-            ]
-
-            # Style for 3-column PART NO table
-            partno_style = [
-                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-                ('FONTNAME', (0, 0), (0, 0), 'Helvetica-Bold'),  # Header bold
-                ('FONTNAME', (1, 0), (1, 0), 'Helvetica-Bold'),  # Part number bold
-                ('FONTNAME', (2, 0), (2, 0), 'Helvetica-Bold'),  # Part status bold
-                ('FONTSIZE', (0, 0), (0, 0), 8),                # Header font size
-                ('FONTSIZE', (1, 0), (1, 0), 11),               # Part number font size
-                ('FONTSIZE', (2, 0), (2, 0), 9),                # Part status font size
-                ('ALIGN', (0, 0), (0, 0), 'CENTER'),            # Header centered
-                ('ALIGN', (1, 0), (1, 0), 'LEFT'),              # Part number left
-                ('ALIGN', (2, 0), (2, 0), 'CENTER'),            # Part status centered
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
                 ('LEFTPADDING', (0, 0), (-1, -1), 3),
                 ('RIGHTPADDING', (0, 0), (-1, -1), 3),
                 ('TOPPADDING', (0, 0), (-1, -1), 2),
                 ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+                
+                # Grid lines for most cells
+                ('GRID', (0, 0), (2, -1), 1, colors.black),      # Grid for first 3 columns
+                ('LINEABOVE', (3, 0), (3, 2), 1, colors.black),  # Top line for QR column (first 3 rows)
+                ('LINEBELOW', (3, 5), (3, 5), 1, colors.black),  # Bottom line for QR column (last row)
+                ('LINEBEFORE', (3, 0), (3, -1), 1, colors.black), # Left line for QR column
+                ('LINEAFTER', (3, 0), (3, -1), 1, colors.black),  # Right line for QR column
+                
+                # Span QR code across rows 3-5 (QTY/VEH, TYPE, DATE)
+                ('SPAN', (3, 3), (3, 5)),  # QR code spans from row 3 to row 5
+                
+                # Special formatting for specific rows
+                ('FONTSIZE', (1, 1), (1, 1), 11),               # Part number larger
+                ('FONTNAME', (1, 1), (1, 1), 'Helvetica-Bold'), # Part number bold
+                ('FONTSIZE', (2, 1), (2, 1), 9),                # Part status size
+                ('FONTNAME', (2, 1), (2, 1), 'Helvetica-Bold'), # Part status bold
+                ('FONTSIZE', (1, 2), (1, 2), 7),                # Description smaller
             ]
 
-            desc_style_table = [
-                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-                ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (0, -1), 8),
-                ('FONTSIZE', (1, 0), (-1, 0), 7),
-                ('ALIGN', (0, 0), (0, -1), 'CENTER'),
-                ('ALIGN', (1, 0), (1, 0), 'LEFT'),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('LEFTPADDING', (0, 0), (-1, -1), 3),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 3),
-                ('TOPPADDING', (0, 0), (-1, -1), 2),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
-            ]
-
-            # Style for 4-column QTY/VEH table
-            qty_style = [
-                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-                ('FONTNAME', (0, 0), (0, 0), 'Helvetica-Bold'),  # Header bold
-                ('FONTSIZE', (0, 0), (0, 0), 8),                # Header font size
-                ('FONTSIZE', (1, 0), (2, 0), 9),                # QTY and Container font size
-                ('ALIGN', (0, 0), (0, 0), 'CENTER'),            # Header centered
-                ('ALIGN', (1, 0), (1, 0), 'LEFT'),              # QTY value left
-                ('ALIGN', (2, 0), (2, 0), 'CENTER'),            # Container type centered
-                ('ALIGN', (3, 0), (3, 0), 'CENTER'),            # QR code centered
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('LEFTPADDING', (0, 0), (-1, -1), 3),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 3),
-                ('TOPPADDING', (0, 0), (-1, -1), 2),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
-            ]
-
-            type_style = [
-                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-                ('FONTNAME', (0, 0), (0, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (0, 0), 8),
-                ('FONTSIZE', (1, 0), (1, 0), 10),
-                ('ALIGN', (0, 0), (0, 0), 'CENTER'),
-                ('ALIGN', (1, 0), (1, 0), 'LEFT'),
-                ('ALIGN', (2, 0), (2, 0), 'CENTER'),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('LEFTPADDING', (0, 0), (-1, -1), 3),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 3),
-                ('TOPPADDING', (0, 0), (-1, -1), 2),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
-            ]
-
-            date_style_table = [
-                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-                ('FONTNAME', (0, 0), (0, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (0, 0), 8),
-                ('FONTSIZE', (1, 0), (1, 0), 10),
-                ('ALIGN', (0, 0), (0, 0), 'CENTER'),
-                ('ALIGN', (1, 0), (1, 0), 'LEFT'),
-                ('ALIGN', (2, 0), (2, 0), 'CENTER'),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('LEFTPADDING', (0, 0), (-1, -1), 3),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 3),
-                ('TOPPADDING', (0, 0), (-1, -1), 2),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
-            ]
-
-            bottom_style = [
+            # Apply styles to location table
+            location_table_style = [
                 ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
                 ('FONTNAME', (0, 0), (0, 0), 'Helvetica-Bold'),
                 ('FONTSIZE', (0, 0), (-1, -1), 8),
@@ -507,23 +423,12 @@ def generate_sticker_labels(df, line_loc_header_width, line_loc_box1_width,
                 ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
             ]
 
-            # Apply styles to tables
-            assly_table.setStyle(TableStyle(assly_style))
-            partno_table.setStyle(TableStyle(partno_style))
-            desc_table.setStyle(TableStyle(desc_style_table))
-            qty_table.setStyle(TableStyle(qty_style))
-            type_table.setStyle(TableStyle(type_style))
-            date_table.setStyle(TableStyle(date_style_table))
-            bottom_table.setStyle(TableStyle(bottom_style))
+            main_table.setStyle(TableStyle(main_table_style))
+            location_table.setStyle(TableStyle(location_table_style))
 
             # Add tables to elements
-            elements.append(assly_table)
-            elements.append(partno_table)
-            elements.append(desc_table)
-            elements.append(qty_table)
-            elements.append(type_table)
-            elements.append(date_table)
-            elements.append(bottom_table)
+            elements.append(main_table)
+            elements.append(location_table)
 
             # Add page break except for last row
             if index < len(df) - 1:
@@ -647,24 +552,39 @@ def main():
     else:
         st.info("👆 Please upload an Excel or CSV file to get started.")
         
-        # Show example format
-        st.subheader("📋 Expected File Format")
+        # Show sample data format
+        st.subheader("📝 Expected Data Format")
         st.markdown("""
-        Your file should contain the following columns (column names are flexible):
-        
-        **Required Columns:**
-        - **Assembly** (ASSLY, Assembly Name, etc.)
-        - **Part Number** (PARTNO, Part No, Item Number, etc.)
-        - **Description** (Description, Part Description, etc.)
-        
-        **Optional Columns:**
-        - **Quantity per Vehicle** (QTY/VEH, Qty Bin, etc.)
-        - **Type** (TYPE, Type name, etc.)
-        - **Line Location** (LINE LOCATION, Line Loc, etc.)
-        - **Part Status** (PART STATUS, Status, etc.)
-        - **Container Type** (CONTAINER TYPE, Bin Type, etc.)
+        Your file should contain columns with names similar to:
+        - **Assembly/ASSLY**: Assembly name or part assembly
+        - **Part No/PARTNO**: Part number or product code  
+        - **Description**: Part description or name
+        - **QTY/VEH**: Quantity per vehicle (optional)
+        - **Type**: Part type (optional)
+        - **Line Location**: Location information (optional)
+        - **Part Status**: Status of the part (optional)
+        - **Container Type**: Type of container/bin (optional)
         """)
+        
+        # Show sample table
+        sample_data = {
+            'ASSLY': ['Engine Assembly', 'Brake System'],
+            'PARTNO': ['ENG001', 'BRK002'],
+            'DESCRIPTION': ['V6 Engine Block', 'Brake Pad Set'],
+            'QTY / VEH': [1, 4],
+            'TYPE': ['Engine', 'Brake'],
+            'LINE LOCATION': ['A1_B2_C3_D4', 'E5_F6_G7_H8'],
+            'PART STATUS': ['Active', 'Active'],
+            'CONTAINER TYPE': ['Large Bin', 'Small Box']
+        }
+        
+        sample_df = pd.DataFrame(sample_data)
+        st.dataframe(sample_df)
 
+# Custom SimpleDocTemplate class to handle page template
+class SimpleDocDocument(SimpleDocTemplate):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
 if __name__ == "__main__":
     main()
