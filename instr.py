@@ -347,7 +347,7 @@ def generate_sticker_labels(df, line_loc_header_width, line_loc_box1_width,
             if container_available and container:
                 # QTY/VEH row with container (4 columns with QR spanning 3 rows)
                 qty_veh_table_data = [
-                    ["QTY/VEH", Paragraph(str(Part_per_veh), partper_style), Paragraph(str(container), container_style), qr_cell
+                    ["QTY/VEH", Paragraph(str(Part_per_veh), partper_style), Paragraph(str(container), container_style), qr_cell]
                 ]
 
                 # Column widths for 4-column QTY/VEH table
