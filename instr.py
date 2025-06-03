@@ -133,7 +133,7 @@ def generate_qr_code(data_string):
         img_buffer.seek(0)
 
         # Increased QR code size to better fit the spanning area
-        return Image(img_buffer, width=2.2*cm, height=2.2*cm)
+        return Image(img_buffer, width=1.8*cm, height=1.8*cm)
     except Exception as e:
         st.error(f"Error generating QR code: {e}")
         return None
