@@ -653,6 +653,125 @@ def main():
                 else:
                     df = pd.read_excel(uploaded_file)
                 
+                st.success(f"✅ Successfully generated {len(df)} sticker labels!")
+            
+            return pdf_data, f"sticker_labels_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+            
+        except Exception as e:
+            st.error(f"Error building PDF: {e}")
+            # Clean up temporary file if it exists
+            if os.path.exists(output_pdf_path):
+                os.unlink(output_pdf_path)
+            return None, None
+            
+    except Exception as e:
+        st.error(f"Error in generate_sticker_labels: {e}")
+        return None, None
+
+def main():
+    st.set_page_config(page_title="Sticker Label Generator", layout="wide")
+    
+    st.title("🏷️ Sticker Label Generator")
+    st.markdown("Upload your Excel/CSV file to generate professional sticker labels with QR codes")
+    
+    # Sidebar for configuration
+    with st.sidebar:
+        st.header("⚙️ Configuration")
+        
+        # Logo upload section
+        st.subheader("📷 Logo Upload")
+        uploaded_logo = st.file_uploader(
+            "Upload Logo for First Box (Optional)",
+            type=['png', 'jpg', 'jpeg', 'gif'],
+            help="Logo will be resized to fit in the first box (23% width)"
+        )
+        
+        if uploaded_logo:
+            st.success("✅ Logo uploaded successfully")
+            # Show preview
+            logo_preview = PILImage.open(uploaded_logo)
+            st.image(logo_preview, caption="Logo Preview", width=150)
+            uploaded_logo.seek(0)  # Reset file pointer
+        
+        st.divider()
+        
+        # Line location column width settings
+        st.subheader("📏 Line Location Column Widths")
+        st.markdown("Adjust the width percentages for line location columns:")
+        
+        line_loc_header_width = st.slider(
+            "Header Width (%)", 
+            min_value=0.05, 
+            max_value=0.50, 
+            value=0.20, 
+            step=0.01,
+            format="%.2f",
+            help="Width of 'LINE LOCATION' header column"
+        )
+        
+        remaining_width = 1.0 - line_loc_header_width
+        st.caption(f"Remaining width for boxes: {remaining_width:.2f}")
+        
+        line_loc_box1_width = st.slider(
+            "Box 1 Width (%)", 
+            min_value=0.05, 
+            max_value=remaining_width, 
+            value=min(0.20, remaining_width/4), 
+            step=0.01,
+            format="%.2f"
+        )
+        
+        remaining_after_box1 = remaining_width - line_loc_box1_width
+        line_loc_box2_width = st.slider(
+            "Box 2 Width (%)", 
+            min_value=0.05, 
+            max_value=remaining_after_box1, 
+            value=min(0.20, remaining_after_box1/3), 
+            step=0.01,
+            format="%.2f"
+        )
+        
+        remaining_after_box2 = remaining_after_box1 - line_loc_box2_width
+        line_loc_box3_width = st.slider(
+            "Box 3 Width (%)", 
+            min_value=0.05, 
+            max_value=remaining_after_box2, 
+            value=min(0.20, remaining_after_box2/2), 
+            step=0.01,
+            format="%.2f"
+        )
+        
+        line_loc_box4_width = remaining_after_box2 - line_loc_box3_width
+        st.caption(f"Box 4 Width: {line_loc_box4_width:.2f} (auto-calculated)")
+        
+        # Validation
+        total_width = (line_loc_header_width + line_loc_box1_width + 
+                      line_loc_box2_width + line_loc_box3_width + line_loc_box4_width)
+        
+        if abs(total_width - 1.0) > 0.01:
+            st.error(f"⚠️ Total width: {total_width:.2f} (should be 1.00)")
+        else:
+            st.success(f"✅ Total width: {total_width:.2f}")
+    
+    # Main content area
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        st.header("📁 File Upload")
+        uploaded_file = st.file_uploader(
+            "Choose Excel or CSV file",
+            type=['xlsx', 'xls', 'csv'],
+            help="Upload your data file containing part information"
+        )
+        
+        if uploaded_file is not None:
+            try:
+                # Read the file
+                if uploaded_file.name.endswith('.csv'):
+                    df = pd.read_csv(uploaded_file)
+                else:
+                    df = pd.read_excel(uploaded_file)
+                
                 st.success(f"✅ File loaded successfully! ({len(df)} rows)")
                 
                 # Show data preview
@@ -777,13 +896,31 @@ def main():
         
         sample_df = pd.DataFrame(sample_data)
         
-        st.download_button(
-            label="📥 Download Sample Excel",
-            data=sample_df.to_excel(index=False, engine='openpyxl').encode() if hasattr(sample_df.to_excel(index=False, engine='openpyxl'), 'encode') else sample_df.to_csv(index=False).encode(),
-            file_name="sample_sticker_data.xlsx" if 'openpyxl' in str(sample_df.to_excel) else "sample_sticker_data.csv",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            help="Download a sample file to see the expected format"
-        )
+        # Create Excel file in memory
+        excel_buffer = BytesIO()
+        with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
+            sample_df.to_excel(writer, index=False, sheet_name='Sample Data')
+        excel_buffer.seek(0)
+        
+        col_sample1, col_sample2 = st.columns(2)
+        
+        with col_sample1:
+            st.download_button(
+                label="📥 Download Sample Excel",
+                data=excel_buffer.getvalue(),
+                file_name="sample_sticker_data.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                help="Download a sample Excel file to see the expected format"
+            )
+        
+        with col_sample2:
+            st.download_button(
+                label="📥 Download Sample CSV",
+                data=sample_df.to_csv(index=False).encode('utf-8'),
+                file_name="sample_sticker_data.csv",
+                mime="text/csv",
+                help="Download a sample CSV file to see the expected format"
+            )
 
 if __name__ == "__main__":
     main()
