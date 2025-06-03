@@ -442,8 +442,7 @@ def generate_sticker_labels(df, line_loc_header_width, line_loc_box1_width,
                 ('FONTSIZE', (0, 0), (0, 0), 8),                # Header font size
                 ('FONTSIZE', (1, 0), (2, 0), 10),               # Value font size
                 ('ALIGN', (0, 0), (0, 0), 'CENTER'),            # Header centered
-                ('ALIGN', (1, 0), (2, 0), 'LEFT'),              # Values left
-                ('ALIGN', (3, 0), (3, 0), 'CENTER'),            # QR centered
+                ('ALIGN', (1, 0), (2, 0), 'LEFT'),              # Values lef
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
                 ('GRID', (0, 0), (-1, -1), 1, colors.black),    # All borders
                 ('LEFTPADDING', (0, 0), (-1, -1), 3),
