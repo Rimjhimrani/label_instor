@@ -73,11 +73,11 @@ def process_uploaded_logo(uploaded_logo, target_width_cm, target_height_cm):
 
         # Get original dimensions
         orig_width, orig_height = logo_img.size
-        
+
         # Calculate aspect ratio and resize to fit within bounds while maintaining aspect ratio
         aspect_ratio = orig_width / orig_height
         target_aspect = box_width_px / box_height_px
-        
+
         if aspect_ratio > target_aspect:
             # Image is wider, fit to width
             new_width = box_width_px
@@ -86,7 +86,7 @@ def process_uploaded_logo(uploaded_logo, target_width_cm, target_height_cm):
             # Image is taller, fit to height
             new_height = box_height_px
             new_width = int(box_height_px * aspect_ratio)
-        
+
         # Resize with high quality
         logo_img = logo_img.resize((new_width, new_height), PILImage.Resampling.LANCZOS)
 
@@ -102,7 +102,7 @@ def process_uploaded_logo(uploaded_logo, target_width_cm, target_height_cm):
         print(f"LOGO DEBUG: Target: {target_width_cm:.2f}cm x {target_height_cm:.2f}cm")
         print(f"LOGO DEBUG: Final: {final_width_cm:.2f}cm x {final_height_cm:.2f}cm")
         print(f"LOGO DEBUG: Pixels: {new_width}px x {new_height}px")
-        
+
         # Create ReportLab Image with actual dimensions
         return Image(img_buffer, width=final_width_cm*cm, height=final_height_cm*cm)
 
@@ -132,7 +132,6 @@ def generate_qr_code(data_string):
         qr_img.save(img_buffer, format='PNG')
         img_buffer.seek(0)
 
-        # Increased QR code size to better fit the spanning area
         return Image(img_buffer, width=1.8*cm, height=1.8*cm)
     except Exception as e:
         st.error(f"Error generating QR code: {e}")
@@ -322,7 +321,7 @@ def generate_sticker_labels(df, line_loc_header_width, line_loc_box1_width,
 
             # Row heights
             ASSLY_row_height = 0.85*cm
-            part_row_height = 0.8*cm   
+            part_row_height = 0.8*cm
             desc_row_height = 0.5*cm
             bottom_row_height = 0.6*cm
             location_row_height = 0.5*cm
@@ -336,27 +335,33 @@ def generate_sticker_labels(df, line_loc_header_width, line_loc_box1_width,
             # Create ASSLY row content
             first_box_content = first_box_logo if first_box_logo else ""
 
+            # Create table data with QR code spanning QTY/VEH to DATE rows
+            # Structure: Each table row has 4 columns to accommodate QR spanning
+            unified_table_data = [
+                [first_box_content, "ASSLY", Paragraph(ASSLY, ASSLY_style), ""],
+                ["PART NO", Paragraph(f"<b>{part_no}</b>", Part_style), Paragraph(f"<b>{part_status}</b>", Part_status_style), ""],
+                ["PART DESC", Paragraph(desc, desc_style), "", ""],
+                ["QTY/VEH", Paragraph(str(Part_per_veh), partper_style), Paragraph(str(container_type), container_style), qr_cell],
+                ["TYPE", Paragraph(str(Type), Type_style), "", ""],
+                ["DATE", Paragraph(today_date, date_style), "", ""],
+                ["LINE LOCATION", location_box_1, location_box_2, location_box_3, location_box_4]
+            ]
+
             # Column widths for different sections
-            col_widths_assly = [
-                content_width * 0.25,    # Logo box: 25%
-                content_width * 0.15,    # Header: 15%
-                content_width * 0.60     # Value: 60%
-            ]
-
-            col_widths_partno = [
+            col_widths_standard_4col = [
                 content_width * 0.25,    # Header: 25%
-                content_width * 0.50,    # Part number: 50%
-                content_width * 0.25     # Part status: 25%
+                content_width * 0.35,    # Content: 35%
+                content_width * 0.00,    # Empty for QR alignment: 0%
+                content_width * 0.40     # QR area: 40%
             ]
 
-            col_widths_standard = [content_width * 0.25, content_width * 0.75]
-            
-            # For the combined bottom section with QR code
-            col_widths_bottom_section = [
-                content_width * 0.60,    # Left section (75% of 80%): 60%
-                content_width * 0.40     # QR code section: 40%
+            col_widths_qty_4col = [
+                content_width * 0.25,    # Header: 25%
+                content_width * 0.175,   # QTY value: 17.5%
+                content_width * 0.175,   # Container: 17.5%
+                content_width * 0.40     # QR code: 40%
             ]
-            
+
             col_widths_bottom = [
                 content_width * line_loc_header_width,
                 content_width * line_loc_box1_width,
@@ -365,562 +370,216 @@ def generate_sticker_labels(df, line_loc_header_width, line_loc_box1_width,
                 content_width * line_loc_box4_width
             ]
 
-            # Create individual tables for better control
-            # ASSLY table
-            assly_table_data = [[first_box_content, "ASSLY", Paragraph(ASSLY, ASSLY_style)]]
-            assly_table = Table(assly_table_data, colWidths=col_widths_assly, rowHeights=[ASSLY_row_height])
-            
-            # PART NO table
-            partno_table_data = [["PART NO", Paragraph(f"<b>{part_no}</b>", Part_style), Paragraph(f"<b>{part_status}</b>", Part_status_style)]]
-            partno_table = Table(partno_table_data, colWidths=col_widths_partno, rowHeights=[part_row_height])
-            
-            # PART DESC table
-            desc_table_data = [["PART DESC", Paragraph(desc, desc_style)]]
-            desc_table = Table(desc_table_data, colWidths=col_widths_standard, rowHeights=[desc_row_height])
-            
-            # Create combined bottom section table with QR code spanning 3 rows
-            # Left section contains QTY/VEH, TYPE, and DATE in nested table
-            left_section_data = [
-                ["QTY/VEH", Paragraph(str(Part_per_veh), partper_style), Paragraph(str(container_type), container_style)],
-                ["TYPE", Paragraph(str(Type), Type_style), ""],
-                ["DATE", Paragraph(today_date, date_style), ""]
-            ]
-            
-            # Column widths for the left section (nested table)
-            left_section_col_widths = [
-                (content_width * 0.60) * 0.42,  # Header: 42% of left section
-                (content_width * 0.60) * 0.29,  # First value: 29% of left section  
-                (content_width * 0.60) * 0.29   # Second value: 29% of left section
-            ]
-            
-            left_section_table = Table(left_section_data, 
-                                     colWidths=left_section_col_widths, 
-                                     rowHeights=[bottom_row_height, bottom_row_height, bottom_row_height])
-            
-            # Main bottom section table combining left section and QR code
-            bottom_section_data = [[left_section_table, qr_cell]]
-            bottom_section_table = Table(bottom_section_data, 
-                                       colWidths=col_widths_bottom_section, 
-                                       rowHeights=[bottom_row_height * 3])  # 3 rows height for QR spanning
-            
-            # LINE LOCATION table
-            location_table_data = [["LINE LOCATION", location_box_1, location_box_2, location_box_3, location_box_4]]
-            location_table = Table(location_table_data, colWidths=col_widths_bottom, rowHeights=[location_row_height])
+            row_heights = [ASSLY_row_height, part_row_height, desc_row_height, bottom_row_height, bottom_row_height, bottom_row_height, location_row_height]
 
-            # Apply table styles
-            assly_table_style = [
+            # Create the main table with all rows
+            main_table = Table(unified_table_data, colWidths=col_widths_standard_4col, rowHeights=row_heights)
+
+            # Apply comprehensive table style with QR spanning from row 3 (QTY/VEH) to row 5 (DATE)
+            main_table_style = [
+                # Font settings
                 ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-                ('FONTNAME', (1, 0), (1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, -1), 8),
-                ('ALIGN', (0, 0), (0, 0), 'CENTER'),
-                ('ALIGN', (1, 0), (1, 0), 'CENTER'),
-                ('ALIGN', (2, 0), (2, 0), 'LEFT'),
+                ('FONTNAME', (0, 0), (1, 6), 'Helvetica-Bold'),  # Headers bold
+                ('FONTNAME', (1, 1), (1, 1), 'Helvetica-Bold'),  # Part number bold
+                ('FONTNAME', (2, 1), (2, 1), 'Helvetica-Bold'),  # Part status bold
+                
+                # Font sizes
+                ('FONTSIZE', (0, 0), (1, 6), 8),                # Header font size
+                ('FONTSIZE', (2, 0), (2, 0), 9),                # ASSLY content
+                ('FONTSIZE', (1, 1), (1, 1), 11),               # Part number
+                ('FONTSIZE', (2, 1), (2, 1), 9),                # Part status
+                ('FONTSIZE', (1, 2), (1, 2), 7),                # Description
+                ('FONTSIZE', (1, 3), (2, 5), 10),               # QTY, Container, Type, Date
+                ('FONTSIZE', (1, 6), (4, 6), 8),                # Line location
+                
+                # Alignment
+                ('ALIGN', (0, 0), (0, 6), 'CENTER'),            # All headers centered
+                ('ALIGN', (1, 0), (1, 0), 'CENTER'),            # ASSLY header centered
+                ('ALIGN', (2, 0), (2, 0), 'LEFT'),              # ASSLY content left
+                ('ALIGN', (1, 1), (1, 1), 'LEFT'),              # Part number left
+                ('ALIGN', (2, 1), (2, 1), 'CENTER'),            # Part status centered
+                ('ALIGN', (1, 2), (1, 2), 'LEFT'),              # Description left
+                ('ALIGN', (1, 3), (2, 5), 'LEFT'),              # QTY, Container, Type, Date left
+                ('ALIGN', (3, 3), (3, 5), 'CENTER'),            # QR code centered
+                ('ALIGN', (1, 6), (4, 6), 'CENTER'),            # Line location centered
+                
+                # Vertical alignment
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                
+                # Grid lines - Full table grid
+                ('GRID', (0, 0), (2, 6), 1, colors.black),      # Left side grid (all rows except QR area)
+                ('GRID', (3, 3), (3, 5), 1, colors.black),      # QR cell borders
+                ('GRID', (0, 6), (4, 6), 1, colors.black),      # Line location row (5 columns)
+                
+                # QR code spanning from QTY/VEH (row 3) to DATE (row 5)
+                ('SPAN', (3, 3), (3, 5)),
+                
+                # Padding
                 ('LEFTPADDING', (0, 0), (-1, -1), 2),
                 ('RIGHTPADDING', (0, 0), (-1, -1), 2),
                 ('TOPPADDING', (0, 0), (-1, -1), 2),
                 ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
             ]
 
-            partno_table_style = [
-                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-                ('FONTNAME', (0, 0), (0, 0), 'Helvetica-Bold'),
-                ('FONTNAME', (1, 0), (1, 0), 'Helvetica-Bold'),
-                ('FONTNAME', (2, 0), (2, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (0, 0), 8),
-                ('FONTSIZE', (1, 0), (1, 0), 11),
-                ('FONTSIZE', (2, 0), (2, 0), 9),
-                ('ALIGN', (0, 0), (0, 0), 'CENTER'),
-                ('ALIGN', (1, 0), (1, 0), 'LEFT'),
-                ('ALIGN', (2, 0), (2, 0), 'CENTER'),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('LEFTPADDING', (0, 0), (-1, -1), 3),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 3),
-                ('TOPPADDING', (0, 0), (-1, -1), 2),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
-            ]
+            # Apply the style to the main table
+            main_table.setStyle(TableStyle(main_table_style))
 
-            desc_table_style = [
-                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-                ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (0, -1), 8),
-                ('FONTSIZE', (1, 0), (-1, 0), 7),
-                ('ALIGN', (0, 0), (0, -1), 'CENTER'),
-                ('ALIGN', (1, 0), (1, 0), 'LEFT'),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('LEFTPADDING', (0, 0), (-1, -1), 3),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 3),
-                ('TOPPADDING', (0, 0), (-1, -1), 2),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
-            ]
+            # Add the table to elements
+            elements.append(main_table)
 
-            # Left section table style (nested table)
-            left_section_table_style = [
-                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-                ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),  # Headers bold
-                ('FONTSIZE', (0, 0), (0, -1), 8),                # Header font size
-                ('FONTSIZE', (1, 0), (-1, -1), 9),               # Value font size
-                ('ALIGN', (0, 0), (0, -1), 'CENTER'),            # Headers centered
-                ('ALIGN', (1, 0), (-1, -1), 'LEFT'),             # Values left
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('LEFTPADDING', (0, 0), (-1, -1), 3),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 3),
-                ('TOPPADDING', (0, 0), (-1, -1), 2),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
-            ]
-
-            # Bottom section table style (main table with QR)
-            bottom_section_table_style = [
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('ALIGN', (1, 0), (1, 0), 'CENTER'),  # QR code centered
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('LEFTPADDING', (0, 0), (-1, -1), 0),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
-                ('TOPPADDING', (0, 0), (-1, -1), 0),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
-            ]
-
-            location_table_style = [
-                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-                ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, -1), 8),
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('LEFTPADDING', (0, 0), (-1, -1), 2),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 2),
-                ('TOPPADDING', (0, 0), (-1, -1), 2),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
-            ]
-
-            # Apply styles to tables
-            assly_table.setStyle(TableStyle(assly_table_style))
-            partno_table.setStyle(TableStyle(partno_table_style))
-            desc_table.setStyle(TableStyle(desc_table_style))
-            left_section_table.setStyle(TableStyle(left_section_table_style))
-            bottom_section_table.setStyle(TableStyle(bottom_section_table_style))
-            location_table.setStyle(TableStyle(location_table_style))
-
-            # Add tables to elements
-            elements.extend([
-                assly_table,
-                partno_table,
-                desc_table,
-                bottom_section_table,  # This replaces the separate qty, type, and date tables
-                location_table,
-                Spacer(1, 0.1*cm)
-            ])
-
-            # Add all elements for this sticker
+            # Add to all elements
             all_elements.extend(elements)
-            
-            # Add page break for next sticker (except for last one)
-            if index < len(df) - 1:
+            if index < len(df) - 1:  # Add page break except for last item
                 all_elements.append(PageBreak())
 
-        # Build PDF
+        progress_bar.empty()
+
+        # Build PDF with border
+        doc.build(all_elements, onFirstPage=draw_border, onLaterPages=draw_border)
+
+        # Read PDF file for download
+        with open(output_pdf_path, 'rb') as pdf_file:
+            pdf_bytes = pdf_file.read()
+
+        # Clean up temporary file
+        os.unlink(output_pdf_path)
+
+        return pdf_bytes, output_pdf_path
+
+    except Exception as e:
+        st.error(f"Error generating sticker labels: {str(e)}")
+        return None, None
+
+def main():
+    st.set_page_config(page_title="Sticker Generator", layout="wide")
+    st.title("Sticker Label Generator with QR Code")
+    st.markdown("---")
+
+    # File upload
+    uploaded_file = st.file_uploader("Upload CSV file", type=['csv'])
+
+    # Logo upload for first box
+    st.subheader("Logo Settings")
+    uploaded_first_box_logo = st.file_uploader(
+        "Upload logo for first box (Optional)",
+        type=['png', 'jpg', 'jpeg'],
+        help="Upload a logo to display in the first box of each sticker. Logo will be automatically resized to fit."
+    )
+
+    if uploaded_file is not None:
         try:
-            doc.build(all_elements, onFirstPage=draw_border, onLaterPages=draw_border)
-            
-            # Read the generated PDF
-            with open(output_pdf_path, 'rb') as pdf_file:
-                pdf_data = pdf_file.read()
-            
-            # Clean up temporary file
-            os.unlink(output_pdf_path)
-            
-            progress_bar.progress(1.0)
-            st.success(f"✅ Successfully generated {len(df)} sticker labels!")
-            
-            return pdf_data, f"sticker_labels_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-            
-        except Exception as e:
-            st.error(f"Error building PDF: {e}")
-            # Clean up temporary file if it exists
-            if os.path.exists(output_pdf_path):
-                os.unlink(output_pdf_path)
-            return None, None
-            
-    except Exception as e:
-        st.error(f"Error in generate_sticker_labels: {e}")
-        return None, None
+            # Read CSV
+            df = pd.read_csv(uploaded_file)
+            st.success(f"✅ File uploaded successfully! Found {len(df)} rows.")
 
-def main():
-    st.set_page_config(page_title="Sticker Label Generator", layout="wide")
-    
-    st.title("🏷️ Sticker Label Generator")
-    st.markdown("Upload your Excel/CSV file to generate professional sticker labels with QR codes")
-    
-    # Sidebar for configuration
-    with st.sidebar:
-        st.header("⚙️ Configuration")
-        
-        # Logo upload section
-        st.subheader("📷 Logo Upload")
-        uploaded_logo = st.file_uploader(
-            "Upload Logo for First Box (Optional)",
-            type=['png', 'jpg', 'jpeg', 'gif'],
-            help="Logo will be resized to fit in the first box (23% width)"
-        )
-        
-        if uploaded_logo:
-            st.success("✅ Logo uploaded successfully")
-            # Show preview
-            logo_preview = PILImage.open(uploaded_logo)
-            st.image(logo_preview, caption="Logo Preview", width=150)
-            uploaded_logo.seek(0)  # Reset file pointer
-        
-        st.divider()
-        
-        # Line location column width settings
-        st.subheader("📏 Line Location Column Widths")
-        st.markdown("Adjust the width percentages for line location columns:")
-        
-        line_loc_header_width = st.slider(
-            "Header Width (%)", 
-            min_value=0.05, 
-            max_value=0.50, 
-            value=0.20, 
-            step=0.01,
-            format="%.2f",
-            help="Width of 'LINE LOCATION' header column"
-        )
-        
-        remaining_width = 1.0 - line_loc_header_width
-        st.caption(f"Remaining width for boxes: {remaining_width:.2f}")
-        
-        line_loc_box1_width = st.slider(
-            "Box 1 Width (%)", 
-            min_value=0.05, 
-            max_value=remaining_width, 
-            value=min(0.20, remaining_width/4), 
-            step=0.01,
-            format="%.2f"
-        )
-        
-        remaining_after_box1 = remaining_width - line_loc_box1_width
-        line_loc_box2_width = st.slider(
-            "Box 2 Width (%)", 
-            min_value=0.05, 
-            max_value=remaining_after_box1, 
-            value=min(0.20, remaining_after_box1/3), 
-            step=0.01,
-            format="%.2f"
-        )
-        
-        remaining_after_box2 = remaining_after_box1 - line_loc_box2_width
-        line_loc_box3_width = st.slider(
-            "Box 3 Width (%)", 
-            min_value=0.05, 
-            max_value=remaining_after_box2, 
-            value=min(0.20, remaining_after_box2/2), 
-            step=0.01,
-            format="%.2f"
-        )
-        
-        line_loc_box4_width = remaining_after_box2 - line_loc_box3_width
-        st.caption(f"Box 4 Width: {line_loc_box4_width:.2f} (auto-calculated)")
-        
-        # Validation
-        total_width = (line_loc_header_width + line_loc_box1_width + 
-                      line_loc_box2_width + line_loc_box3_width + line_loc_box4_width)
-        
-        if abs(total_width - 1.0) > 0.01:
-            st.error(f"⚠️ Total width: {total_width:.2f} (should be 1.00)")
-        else:
-            st.success(f"✅ Total width: {total_width:.2f}")
-    
-    # Main content area
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        st.header("📁 File Upload")
-        uploaded_file = st.file_uploader(
-            "Choose Excel or CSV file",
-            type=['xlsx', 'xls', 'csv'],
-            help="Upload your data file containing part information"
-        )
-        
-        if uploaded_file is not None:
-            try:
-                # Read the file
-                if uploaded_file.name.endswith('.csv'):
-                    df = pd.read_csv(uploaded_file)
-                else:
-                    df = pd.read_excel(uploaded_file)
-                
-                st.success(f"✅ Successfully generated {len(df)} sticker labels!")
-            
-            return pdf_data, f"sticker_labels_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-            
-        except Exception as e:
-            st.error(f"Error building PDF: {e}")
-            # Clean up temporary file if it exists
-            if os.path.exists(output_pdf_path):
-                os.unlink(output_pdf_path)
-            return None, None
-            
-    except Exception as e:
-        st.error(f"Error in generate_sticker_labels: {e}")
-        return None, None
+            # Display column info
+            st.subheader("Column Information")
+            st.write("**Available columns in your file:**")
+            for i, col in enumerate(df.columns, 1):
+                st.write(f"{i}. `{col}`")
 
-def main():
-    st.set_page_config(page_title="Sticker Label Generator", layout="wide")
-    
-    st.title("🏷️ Sticker Label Generator")
-    st.markdown("Upload your Excel/CSV file to generate professional sticker labels with QR codes")
-    
-    # Sidebar for configuration
-    with st.sidebar:
-        st.header("⚙️ Configuration")
-        
-        # Logo upload section
-        st.subheader("📷 Logo Upload")
-        uploaded_logo = st.file_uploader(
-            "Upload Logo for First Box (Optional)",
-            type=['png', 'jpg', 'jpeg', 'gif'],
-            help="Logo will be resized to fit in the first box (23% width)"
-        )
-        
-        if uploaded_logo:
-            st.success("✅ Logo uploaded successfully")
-            # Show preview
-            logo_preview = PILImage.open(uploaded_logo)
-            st.image(logo_preview, caption="Logo Preview", width=150)
-            uploaded_logo.seek(0)  # Reset file pointer
-        
-        st.divider()
-        
-        # Line location column width settings
-        st.subheader("📏 Line Location Column Widths")
-        st.markdown("Adjust the width percentages for line location columns:")
-        
-        line_loc_header_width = st.slider(
-            "Header Width (%)", 
-            min_value=0.05, 
-            max_value=0.50, 
-            value=0.20, 
-            step=0.01,
-            format="%.2f",
-            help="Width of 'LINE LOCATION' header column"
-        )
-        
-        remaining_width = 1.0 - line_loc_header_width
-        st.caption(f"Remaining width for boxes: {remaining_width:.2f}")
-        
-        line_loc_box1_width = st.slider(
-            "Box 1 Width (%)", 
-            min_value=0.05, 
-            max_value=remaining_width, 
-            value=min(0.20, remaining_width/4), 
-            step=0.01,
-            format="%.2f"
-        )
-        
-        remaining_after_box1 = remaining_width - line_loc_box1_width
-        line_loc_box2_width = st.slider(
-            "Box 2 Width (%)", 
-            min_value=0.05, 
-            max_value=remaining_after_box1, 
-            value=min(0.20, remaining_after_box1/3), 
-            step=0.01,
-            format="%.2f"
-        )
-        
-        remaining_after_box2 = remaining_after_box1 - line_loc_box2_width
-        line_loc_box3_width = st.slider(
-            "Box 3 Width (%)", 
-            min_value=0.05, 
-            max_value=remaining_after_box2, 
-            value=min(0.20, remaining_after_box2/2), 
-            step=0.01,
-            format="%.2f"
-        )
-        
-        line_loc_box4_width = remaining_after_box2 - line_loc_box3_width
-        st.caption(f"Box 4 Width: {line_loc_box4_width:.2f} (auto-calculated)")
-        
-        # Validation
-        total_width = (line_loc_header_width + line_loc_box1_width + 
-                      line_loc_box2_width + line_loc_box3_width + line_loc_box4_width)
-        
-        if abs(total_width - 1.0) > 0.01:
-            st.error(f"⚠️ Total width: {total_width:.2f} (should be 1.00)")
-        else:
-            st.success(f"✅ Total width: {total_width:.2f}")
-    
-    # Main content area
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        st.header("📁 File Upload")
-        uploaded_file = st.file_uploader(
-            "Choose Excel or CSV file",
-            type=['xlsx', 'xls', 'csv'],
-            help="Upload your data file containing part information"
-        )
-        
-        if uploaded_file is not None:
-            try:
-                # Read the file
-                if uploaded_file.name.endswith('.csv'):
-                    df = pd.read_csv(uploaded_file)
-                else:
-                    df = pd.read_excel(uploaded_file)
-                
-                st.success(f"✅ File loaded successfully! ({len(df)} rows)")
-                
-                # Show data preview
-                with st.expander("📊 Data Preview", expanded=True):
-                    st.dataframe(df.head(10), use_container_width=True)
-                    st.caption(f"Showing first 10 rows of {len(df)} total rows")
-                
-                # Show column mapping
-                with st.expander("🔗 Column Mapping", expanded=False):
-                    st.markdown("**Detected columns and their mappings:**")
-                    
-                    column_mappings = {
-                        'ASSLY': ['assly', 'ASSY NAME', 'Assy Name', 'assy name', 'assyname',
-                                 'assy_name', 'Assy_name', 'Assembly', 'Assembly Name', 'ASSEMBLY', 'Assembly_Name'],
-                        'part_no': ['PARTNO', 'PARTNO.', 'Part No', 'Part Number', 'PartNo',
-                                   'partnumber', 'part no', 'partnum', 'PART', 'part', 'Product Code',
-                                   'Item Number', 'Item ID', 'Item No', 'item', 'Item'],
-                        'description': ['DESCRIPTION', 'Description', 'Desc', 'Part Description',
-                                       'ItemDescription', 'item description', 'Product Description',
-                                       'Item Description', 'NAME', 'Item Name', 'Product Name'],
-                        'Part_per_veh': ['QYT', 'QTY / VEH', 'Qty/Veh', 'Qty Bin', 'Quantity per Bin',
-                                        'qty bin', 'qtybin', 'quantity bin', 'BIN QTY', 'BINQTY',
-                                        'QTY_BIN', 'QTY_PER_BIN', 'Bin Quantity', 'BIN'],
-                        'container_type': ['CONTAINER', 'Container', 'container', 'BIN TYPE', 'Bin Type',
-                                          'bin type', 'bintype', 'BINTYPE', 'Container Type', 'container type',
-                                          'CONTAINER_TYPE', 'container_type', 'ContainerType'],
-                        'Type': ['TYPE', 'type', 'Type', 'tyPe', 'Type name'],
-                        'line_location': ['LINE LOCATION', 'Line Location', 'line location', 'LINELOCATION',
-                                         'linelocation', 'Line_Location', 'line_location', 'LINE_LOCATION',
-                                         'LineLocation', 'line_loc', 'lineloc', 'LINELOC', 'Line Loc'],
-                        'part_status': ['PART STATUS', 'Part Status', 'part status', 'PARTSTATUS',
-                                       'partstatus', 'Part_Status', 'part_status', 'PART_STATUS',
-                                       'PartStatus', 'STATUS', 'Status', 'status', 'Item Status',
-                                       'Component Status', 'Part State', 'State']
-                    }
-                    
-                    for field, possible_names in column_mappings.items():
-                        found_col = find_column(df, possible_names)
-                        if found_col:
-                            st.success(f"✅ **{field}**: `{found_col}`")
-                        else:
-                            status = "❌ **Required**" if field in ['ASSLY', 'part_no', 'description'] else "⚠️ Optional"
-                            st.write(f"{status} **{field}**: Not found")
-                
-                # Generate button
-                st.header("🚀 Generate Labels")
-                
-                if st.button("Generate Sticker Labels", type="primary", use_container_width=True):
-                    with st.spinner("Generating sticker labels... Please wait..."):
-                        pdf_data, filename = generate_sticker_labels(
-                            df, 
-                            line_loc_header_width,
-                            line_loc_box1_width,
-                            line_loc_box2_width, 
-                            line_loc_box3_width,
-                            line_loc_box4_width,
-                            uploaded_logo
+            # Show data preview
+            st.subheader("Data Preview")
+            st.dataframe(df.head())
+
+            # Line location width settings
+            st.subheader("Line Location Box Width Settings")
+            st.write("Adjust the width percentages for line location boxes (total should equal 1.0):")
+
+            col1, col2, col3, col4, col5 = st.columns(5)
+
+            with col1:
+                line_loc_header_width = st.number_input("Header Width", min_value=0.1, max_value=0.8, value=0.25, step=0.05)
+            with col2:
+                line_loc_box1_width = st.number_input("Box 1 Width", min_value=0.05, max_value=0.5, value=0.1875, step=0.05)
+            with col3:
+                line_loc_box2_width = st.number_input("Box 2 Width", min_value=0.05, max_value=0.5, value=0.1875, step=0.05)
+            with col4:
+                line_loc_box3_width = st.number_input("Box 3 Width", min_value=0.05, max_value=0.5, value=0.1875, step=0.05)
+            with col5:
+                line_loc_box4_width = st.number_input("Box 4 Width", min_value=0.05, max_value=0.5, value=0.1875, step=0.05)
+
+            total_width = line_loc_header_width + line_loc_box1_width + line_loc_box2_width + line_loc_box3_width + line_loc_box4_width
+
+            if abs(total_width - 1.0) > 0.01:
+                st.warning(f"⚠️ Total width is {total_width:.3f}, should be 1.0")
+                st.info("Adjusting widths proportionally...")
+                # Auto-adjust proportionally
+                line_loc_header_width = line_loc_header_width / total_width
+                line_loc_box1_width = line_loc_box1_width / total_width
+                line_loc_box2_width = line_loc_box2_width / total_width
+                line_loc_box3_width = line_loc_box3_width / total_width
+                line_loc_box4_width = line_loc_box4_width / total_width
+                st.success(f"✅ Adjusted total width to 1.0")
+            else:
+                st.success(f"✅ Total width: {total_width:.3f}")
+
+            # Generate button
+            if st.button("🏷️ Generate Sticker Labels", type="primary"):
+                with st.spinner("Generating sticker labels... This may take a few moments."):
+                    pdf_bytes, _ = generate_sticker_labels(
+                        df,
+                        line_loc_header_width,
+                        line_loc_box1_width,
+                        line_loc_box2_width,
+                        line_loc_box3_width,
+                        line_loc_box4_width,
+                        uploaded_first_box_logo
+                    )
+
+                    if pdf_bytes:
+                        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                        filename = f"sticker_labels_{timestamp}.pdf"
+
+                        st.success("✅ Sticker labels generated successfully!")
+                        st.download_button(
+                            label="📥 Download PDF",
+                            data=pdf_bytes,
+                            file_name=filename,
+                            mime="application/pdf"
                         )
-                        
-                        if pdf_data and filename:
-                            st.balloons()
-                            
-                            # Download button
-                            st.download_button(
-                                label="📥 Download PDF Labels",
-                                data=pdf_data,
-                                file_name=filename,
-                                mime="application/pdf",
-                                use_container_width=True
-                            )
-                            
-                            st.success("🎉 Labels generated successfully! Click the download button above.")
-                        else:
-                            st.error("❌ Failed to generate labels. Please check your data and try again.")
-                            
-            except Exception as e:
-                st.error(f"❌ Error processing file: {e}")
-                st.info("💡 Please ensure your file contains the required columns: ASSLY, Part No, and Description")
-    
-    with col2:
-        st.header("ℹ️ Information")
-        
-        st.markdown("""
-        ### 📋 Required Columns
-        - **ASSLY/Assembly**: Assembly name
-        - **Part No/Part Number**: Part identifier  
-        - **Description**: Part description
-        
-        ### 📋 Optional Columns
-        - **QTY/VEH**: Quantity per vehicle
-        - **Container Type**: Bin/container type
-        - **Type**: Part type
-        - **Line Location**: Location code (format: A_B_C_D)
-        - **Part Status**: Status information
-        
-        ### 📏 Label Specifications
-        - **Size**: 10cm × 15cm
-        - **Content Box**: 9.8cm × 5cm  
-        - **QR Code**: Includes all part data
-        - **Border**: Black border around content
-        
-        ### 🔧 Features
-        - Automatic column detection
-        - QR code generation
-        - Logo support (23% width)
-        - Customizable line location widths
-        - Professional PDF output
-        """)
-        
-        # Sample data download
-        st.header("📄 Sample Data")
-        sample_data = {
-            'ASSLY': ['ENGINE_BLOCK', 'TRANSMISSION', 'BRAKE_SYSTEM'],
-            'PARTNO': ['ENG001', 'TRN002', 'BRK003'],
-            'DESCRIPTION': ['Engine Block Assembly', 'Automatic Transmission', 'Brake Disc Assembly'],
-            'QTY / VEH': [1, 1, 4],
-            'CONTAINER': ['Large Bin', 'Medium Bin', 'Small Bin'],
-            'TYPE': ['Critical', 'Standard', 'Standard'],
-            'LINE LOCATION': ['A1_B2_C3_D4', 'X1_Y2_Z3_W4', 'P1_Q2_R3_S4'],
-            'PART STATUS': ['Active', 'Active', 'Pending']
+
+                        # Show some stats
+                        st.info(f"📊 Generated {len(df)} sticker labels")
+                    else:
+                        st.error("❌ Failed to generate sticker labels. Please check your data and try again.")
+
+        except Exception as e:
+            st.error(f"❌ Error processing file: {str(e)}")
+            st.info("Please make sure your CSV file is properly formatted.")
+
+    else:
+        st.info("👆 Please upload a CSV file to get started.")
+
+        # Show expected format
+        st.subheader("Expected CSV Format")
+        st.write("Your CSV should contain columns with names similar to:")
+        expected_columns = {
+            "ASSLY/Assembly": "Assembly name or identifier",
+            "PART NO/Part Number": "Part number or product code",
+            "DESCRIPTION/Part Description": "Part description",
+            "QTY/VEH or Bin Quantity": "Quantity per vehicle/bin (optional)",
+            "CONTAINER/Container Type": "Container or bin type (optional)",
+            "TYPE": "Type classification (optional)",
+            "LINE LOCATION": "Line location code (optional)",
+            "PART STATUS/Status": "Part status (optional)"
         }
         
-        sample_df = pd.DataFrame(sample_data)
+        for col, desc in expected_columns.items():
+            st.write(f"• **{col}**: {desc}")
         
-        # Create Excel file in memory
-        excel_buffer = BytesIO()
-        with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
-            sample_df.to_excel(writer, index=False, sheet_name='Sample Data')
-        excel_buffer.seek(0)
-        
-        col_sample1, col_sample2 = st.columns(2)
-        
-        with col_sample1:
-            st.download_button(
-                label="📥 Download Sample Excel",
-                data=excel_buffer.getvalue(),
-                file_name="sample_sticker_data.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                help="Download a sample Excel file to see the expected format"
-            )
-        
-        with col_sample2:
-            st.download_button(
-                label="📥 Download Sample CSV",
-                data=sample_df.to_csv(index=False).encode('utf-8'),
-                file_name="sample_sticker_data.csv",
-                mime="text/csv",
-                help="Download a sample CSV file to see the expected format"
-            )
+        st.write("\n**Sample CSV structure:**")
+        sample_df = pd.DataFrame({
+            'ASSLY': ['ENGINE_BLOCK', 'TRANSMISSION'],
+            'PART NO': ['EB001', 'TR005'],
+            'DESCRIPTION': ['Engine Block Assembly', 'Transmission Unit'],
+            'QTY/VEH': [1, 1],
+            'CONTAINER': ['Large Bin', 'Medium Box'],
+            'TYPE': ['Critical', 'Standard'],
+            'LINE LOCATION': ['A1_B2_C3_D4', 'E5_F6_G7_H8'],
+            'PART STATUS': ['Active', 'Active']
+        })
+        st.dataframe(sample_df)
 
 if __name__ == "__main__":
     main()
