@@ -310,7 +310,7 @@ def generate_sticker_labels(df, line_loc_header_width, line_loc_box1_width,
             if qr_image:
                 qr_cell = qr_image
             else:
-                qr_cell = Paragraph("QR", ParagraphStyle(name='QRPlaceholder', fontName='Helvetica-Bold', fontSize=12, alignment=TA_CENTER))
+                qr_cell = Paragraph("QR HERE", ParagraphStyle(name='QRPlaceholder', fontName='Helvetica-Bold', fontSize=12, alignment=TA_CENTER))
 
             # Row heights
             ASSLY_row_height = 0.85*cm
@@ -333,9 +333,9 @@ def generate_sticker_labels(df, line_loc_header_width, line_loc_box1_width,
                 [first_box_content, "ASSLY", Paragraph(ASSLY, ASSLY_style)],
                 ["PART NO", Paragraph(f"<b>{part_no}</b>", Part_style), Paragraph(f"<b>{part_status}</b>", Part_status_style)],
                 ["PART DESC", Paragraph(desc, desc_style)],
-                ["QTY/VEH", Paragraph(str(Part_per_veh), partper_style), "", qr_cell],  # 4 columns for QTY/VEH row
+                ["QTY/VEH", Paragraph(str(Part_per_veh), partper_style), "", ""],  # 4 columns for QTY/VEH row
                 ["TYPE", Paragraph(str(Type), Type_style), ""],
-                ["DATE", Paragraph(today_date, date_style), ""],
+                ["DATE", Paragraph(today_date, date_style), qr_cell],
                 ["LINE LOCATION", location_box_1, location_box_2, location_box_3, location_box_4]
             ]
 
