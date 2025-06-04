@@ -572,81 +572,104 @@ def main():
     # Main content area
     if uploaded_file is not None:
         try:
-            # Read the uploaded file
-            if uploaded_file.name.endswith('.csv'):
-                df = pd.read_csv(uploaded_file)
-            else:
-                df = pd.read_excel(uploaded_file)
-            
-            st.success(f"✅ File uploaded successfully! Found {len(df)} rows and {len(df.columns)} columns.")
-            
-            # Display data preview
-            with st.expander("📋 Data Preview", expanded=True):
-                st.dataframe(df.head(10))
-                
-            # Display column information
-            with st.expander("📊 Column Information"):
-                st.write("**Available Columns:**")
-                for i, col in enumerate(df.columns, 1):
-                    st.write(f"{i}. `{col}`")
-            
-            # Generate button
-            if st.button("🏷️ Generate Sticker Labels", type="primary", use_container_width=True):
-                with st.spinner("Generating sticker labels..."):
-                    pdf_bytes, filename = generate_sticker_labels(
-                        df=df,
-                        line_loc_header_width=line_loc_header_width,
-                        line_loc_box1_width=line_loc_box1_width,
-                        line_loc_box2_width=line_loc_box2_width,
-                        line_loc_box3_width=line_loc_box3_width,
-                        line_loc_box4_width=line_loc_box4_width,
-                        uploaded_first_box_logo=uploaded_logo
-                    )
-                    
-                    if pdf_bytes:
-                        # Create download button
-                        st.download_button(
-                            label="📥 Download PDF",
-                            data=pdf_bytes,
-                            file_name=filename,
-                            mime="application/pdf",
-                            type="primary",
-                            use_container_width=True
-                        )
-                        
-                        # Display success message
-                        st.success("🎉 Sticker labels generated successfully!")
-                        
-                        # Show PDF preview info
-                        st.info(f"📄 PDF contains {len(df)} sticker labels")
-                        
+    # Read the uploaded file
+    if uploaded_file.name.endswith('.csv'):
+        df = pd.read_csv(uploaded_file)
     else:
-        # Display instructions when no file is uploaded
-        st.info("👆 Please upload an Excel or CSV file to get started")
+        df = pd.read_excel(uploaded_file)
+    
+    st.success(f"✅ File uploaded successfully! Found {len(df)} rows and {len(df.columns)} columns.")
+    
+    # Display data preview
+    with st.expander("📋 Data Preview", expanded=True):
+        st.dataframe(df.head(10))
         
-        # Show example format
-        with st.expander("📝 Expected File Format"):
-            st.markdown("""
-            Your file should contain the following columns (case-insensitive):
-            
-            **Required Columns:**
-            - `ASSLY` or `Assembly` - Assembly name
-            - `PARTNO` or `Part No` - Part number
-            - `DESCRIPTION` - Part description
-            
-            **Optional Columns:**
-            - `QTY` or `Part_per_veh` - Quantity per vehicle
-            - `TYPE` - Part type
-            - `LINE LOCATION` - Line location (underscore-separated)
-            - `PART STATUS` - Part status
-            
-            **Example:**
-            ```
-            ASSLY          | PARTNO     | DESCRIPTION      | QTY | TYPE | LINE LOCATION | PART STATUS
-            Engine Block   | EB-001     | Main engine part | 1   | Core | A1_B2_C3_D4  | Active
-            Transmission   | TR-002     | Gear assembly    | 1   | Core | A2_B3_C4_D5  | Active
-            ```
-            """)
+    # Display column information
+    with st.expander("📊 Column Information"):
+        st.write("**Available Columns:**")
+        for i, col in enumerate(df.columns, 1):
+            st.write(f"{i}. `{col}`")
 
+except Exception as e:
+    st.error(f"Error reading file: {str(e)}")
+
+# OR CORRECT - Option 2: Remove try-else structure entirely
+# Just use regular if-else:
+if uploaded_file is not None:
+    # Read the uploaded file
+    if uploaded_file.name.endswith('.csv'):
+        df = pd.read_csv(uploaded_file)
+    else:
+        df = pd.read_excel(uploaded_file)
+    
+    st.success(f"✅ File uploaded successfully! Found {len(df)} rows and {len(df.columns)} columns.")
+    
+    # Display data preview
+    with st.expander("📋 Data Preview", expanded=True):
+        st.dataframe(df.head(10))
+        
+    # Display column information
+    with st.expander("📊 Column Information"):
+        st.write("**Available Columns:**")
+        for i, col in enumerate(df.columns, 1):
+            st.write(f"{i}. `{col}`")
+    
+    # Generate button
+    if st.button("🏷️ Generate Sticker Labels", type="primary", use_container_width=True):
+        with st.spinner("Generating sticker labels..."):
+            pdf_bytes, filename = generate_sticker_labels(
+                df=df,
+                line_loc_header_width=line_loc_header_width,
+                line_loc_box1_width=line_loc_box1_width,
+                line_loc_box2_width=line_loc_box2_width,
+                line_loc_box3_width=line_loc_box3_width,
+                line_loc_box4_width=line_loc_box4_width,
+                uploaded_first_box_logo=uploaded_logo
+            )
+            
+            if pdf_bytes:
+                # Create download button
+                st.download_button(
+                    label="📥 Download PDF",
+                    data=pdf_bytes,
+                    file_name=filename,
+                    mime="application/pdf",
+                    type="primary",
+                    use_container_width=True
+                )
+                
+                # Display success message
+                st.success("🎉 Sticker labels generated successfully!")
+                
+                # Show PDF preview info
+                st.info(f"📄 PDF contains {len(df)} sticker labels")
+
+else:
+    # Display instructions when no file is uploaded
+    st.info("👆 Please upload an Excel or CSV file to get started")
+    
+    # Show example format
+    with st.expander("📝 Expected File Format"):
+        st.markdown("""
+        Your file should contain the following columns (case-insensitive):
+        
+        **Required Columns:**
+        - `ASSLY` or `Assembly` - Assembly name
+        - `PARTNO` or `Part No` - Part number
+        - `DESCRIPTION` - Part description
+        
+        **Optional Columns:**
+        - `QTY` or `Part_per_veh` - Quantity per vehicle
+        - `TYPE` - Part type
+        - `LINE LOCATION` - Line location (underscore-separated)
+        - `PART STATUS` - Part status
+        
+        **Example:**
+        ```
+        ASSLY          | PARTNO     | DESCRIPTION      | QTY | TYPE | LINE LOCATION | PART STATUS
+        Engine Block   | EB-001     | Main engine part | 1   | Core | A1_B2_C3_D4  | Active
+        Transmission   | TR-002     | Gear assembly    | 1   | Core | A2_B3_C4_D5  | Active
+        ```
+        """)
 if __name__ == "__main__":
     main()
