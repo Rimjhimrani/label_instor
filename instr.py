@@ -369,8 +369,8 @@ def generate_sticker_labels(df, line_loc_header_width, line_loc_box1_width,
             # Column widths for QTY/VEH row (4 columns) - Modified to accommodate bin_type
             col_widths_qty = [
                 content_width * 0.25,    # Header: 25%
-                content_width * 0.20,    # QTY value: 20%
-                content_width * 0.15,    # Bin type: 15%
+                content_width * 0.175,    # QTY value: 20%
+                content_width * 0.175,    # Bin type: 15%
                 content_width * 0.40     # QR code: 40%
             ]
 
